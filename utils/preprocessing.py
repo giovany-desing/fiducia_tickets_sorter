@@ -1,12 +1,17 @@
 import re
 import string
 import nltk
+import yaml
 nltk.download('punkt_tab')
 nltk.download('stopwords')
 from nltk.tokenize import word_tokenize
 from nltk.corpus import stopwords
 from nltk.stem import SnowballStemmer
 from wordcloud import WordCloud, STOPWORDS
+
+def load_config(config_path='../config.yaml'):
+    with open(config_path, 'r') as file:
+        return yaml.safe_load(file)
 
 def clean(text):
     # Convertir a minúsculas
