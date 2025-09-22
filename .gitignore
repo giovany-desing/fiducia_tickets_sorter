@@ -1,3 +1,15 @@
 # Directorios de entorno virtual
 venv/
 .venv/
+
+# Ignorar data procesada
+data_project/processed/
+
+# Ignorar archivos temporales de Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Ignorar los mlruns
+
+mlruns/

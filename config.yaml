@@ -8,4 +8,11 @@ data:
   processed_path: "data_project/processed"
   target_col: "etiqueta"
 
+# -------------------
+# Configuracion para experimento para MLflow
+# -------------------
+mlflow_tracking:
+  # Nombre del experimento en la UI de MLflow
+  experiment_name: "Clasificacion de tickets Fidudavivienda"
+
 
