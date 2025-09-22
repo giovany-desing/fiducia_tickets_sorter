@@ -1,0 +1,9 @@
+# -------------------
+# Configuración de Datos
+# -------------------
+data:
+  # Ruta al archivo CSV de entrada para el entrenamiento del modelo
+  
+  raw_path: '../data_project/raw/dataset_tickets.csv'
+  # Nombre de la columna que se busca predecir
+  target_col: "etiqueta"

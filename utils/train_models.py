@@ -34,10 +34,10 @@ data["clean_short_description_stem"] = data["clean_short_description"].apply(lim
 data["clean_close_notes_stem"] = data["clean_close_notes"].apply(limpiar_y_stem)
 
 
-# Combina las dos columnas de texto en una sola, si no lo has hecho ya
+# Combina las dos columnas de texto en una sola
 X = data['clean_short_description_stem'] + ' ' + data['clean_close_notes_stem']
 
-# La columna de etiquetas (la variable objetivo)
+# La columna de etiquetas (la variable objetivo o traget)
 y = data['etiqueta']
 
 # Divide los datos
@@ -45,4 +45,6 @@ X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_
 
 logging.info("PREPROCESAMIENTO TERMINADO")
 logging.info("INICIANDO CON EL ENTRENAMIENTO DE MODELOS")
+
+
 
