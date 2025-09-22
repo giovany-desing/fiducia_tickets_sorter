@@ -18,7 +18,7 @@ from wordcloud import WordCloud, STOPWORDS
 
 import pytest
 
-from utils.preprocessing import clean, limpiar_y_stem
+from utils.preprocessing import clean, limpiar_y_stem, save_dataset, load_config
 
 def test_clean_function():
     # Caso 1: Texto con puntuación, números, URL y etiquetas HTML
@@ -44,4 +44,36 @@ def test_limpiar_y_stem_function():
     text_only_stopwords = "no se obtuvo respuesta del usuario cerrado por sistemas"
     expected_result_stopwords = "obtuv usuari cerr sistem"
     assert limpiar_y_stem(text_only_stopwords) == expected_result_stopwords
+
+# Funcion para crear un dataset de pruebas
+@pytest.fixture
+def dummy_df():
+
+    return pd.DataFrame({"col1": [1, 2], "col2": ["a", "b"]})
+
+# Crea una carpeta temporal para simular processed_path. tmp_path es un directorio temporal que pytest limpia solo.
+@pytest.fixture
+def temp_processed_path(tmp_path):
+    return tmp_path
+
+def test_save_dataset_creates_file(dummy_df, temp_processed_path, monkeypatch):
+    # Simula el config.yaml
+    config = {
+        "data": {
+            "processed_path": str(temp_processed_path)  # se usa carpeta temporal
+        }
+    }
+
+
+    monkeypatch.setattr("utils.preprocessing.os.path.dirname",
+                        lambda path: os.getcwd())
+
+    output_file = save_dataset(dummy_df, filename="test.csv", config=config)
+
+    # Verifica que el archivo se creó
+    assert os.path.exists(output_file)
+
+    # Lee el CSV y compara
+    saved_df = pd.read_csv(output_file)
+    pd.testing.assert_frame_equal(dummy_df, saved_df)
 

@@ -2,8 +2,10 @@
 # Configuración de Datos
 # -------------------
 data:
-  # Ruta al archivo CSV de entrada para el entrenamiento del modelo
-  
-  raw_path: '../data_project/raw/dataset_tickets.csv'
-  # Nombre de la columna que se busca predecir
+  # Path para la data lectura de los datos sin procesar
+  raw_path: "data_project/raw/dataset_tickets.csv"
+  # Path para guardar la data de los datos procesados
+  processed_path: "data_project/processed"
   target_col: "etiqueta"
+
+

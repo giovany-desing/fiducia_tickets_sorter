@@ -8,12 +8,16 @@ from nltk.tokenize import word_tokenize
 from nltk.corpus import stopwords
 from nltk.stem import SnowballStemmer
 from wordcloud import WordCloud, STOPWORDS
+import logging
+
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 def load_config(config_path='../config.yaml'):
     with open(config_path, 'r') as file:
         return yaml.safe_load(file)
 
 def clean(text):
+    
     # Convertir a minúsculas
     text = str(text).lower()
 
@@ -68,4 +72,26 @@ def limpiar_y_stem(texto):
 
     # Volver a unir en un solo string
     return " ".join(tokens_stem)
+
+
+import os
+import pandas as pd
+
+
+def save_dataset(df: pd.DataFrame, filename: str, config: dict) -> str:
+    # processed_path viene del YAML (por ej. "data_project/processed")
+    processed_path = config["data"]["processed_path"]
+
+    # __file__ es, por ejemplo, .../fiducia_tickets_sorter/utils/preprocessing.py
+    # -> subimos un nivel para quedar en fiducia_tickets_sorter
+    project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+    folder_path = os.path.join(project_root, processed_path)
+
+    os.makedirs(folder_path, exist_ok=True)
+
+    output_file = os.path.join(folder_path, filename)
+    df.to_csv(output_file, index=False)
+    return output_file
+
 

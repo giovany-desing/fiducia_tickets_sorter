@@ -13,25 +13,26 @@ import mlflow.sklearn
 import logging
 import warnings
 import yaml
+import os
+from preprocessing import clean, limpiar_y_stem, load_config, save_dataset
 
-from preprocessing import clean, limpiar_y_stem, load_config
-
-#configuracion de logs
-
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-
-#data = pd.read_csv('../data_project/dataset_tickets.csv', encoding='latin-1')
 config = load_config()
-data = pd.read_csv(config['data']['raw_path'])
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+raw_path = os.path.join(project_root, config['data']['raw_path'])
 
-
-logging.info("DATA DE ENTRENAMIENTO CARGADA EXITOSAMENTE, INICIANDO CON PREPROCESAMIENTO.....")
+data = pd.read_csv(raw_path)
 
 data["clean_short_description"] = data["short_description"].apply(clean)
 data["clean_close_notes"] = data["close_notes"].apply(clean)
 
 data["clean_short_description_stem"] = data["clean_short_description"].apply(limpiar_y_stem)
 data["clean_close_notes_stem"] = data["clean_close_notes"].apply(limpiar_y_stem)
+
+
+save_data = data[["clean_short_description_stem","clean_close_notes_stem"]]
+
+saved_path = save_dataset(save_data, filename="dataset_processed.csv", config=config)
+print("✅ Guardado en:", saved_path)
 
 
 # Combina las dos columnas de texto en una sola
@@ -43,8 +44,6 @@ y = data['etiqueta']
 # Divide los datos
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
 
-logging.info("PREPROCESAMIENTO TERMINADO")
-logging.info("INICIANDO CON EL ENTRENAMIENTO DE MODELOS")
 
 
 
