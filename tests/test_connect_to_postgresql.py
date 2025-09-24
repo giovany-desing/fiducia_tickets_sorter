@@ -7,7 +7,7 @@ import sys
 import os
 sys.path.append(os.path.dirname(__file__))
 
-from connect_to_postgresql import (
+from utils.connect_to_postgresql import (
     conectar_base_datos,
     verificar_tabla_ada,
     verificar_version_postgres,
