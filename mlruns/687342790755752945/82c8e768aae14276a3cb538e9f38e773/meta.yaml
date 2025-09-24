@@ -1,0 +1,14 @@
+artifact_uri: file:///Users/giovanysamaca/Desktop/fiducia_tickets_sorter/mlruns/687342790755752945/82c8e768aae14276a3cb538e9f38e773/artifacts
+end_time: 1758725305564
+entry_point_name: ''
+experiment_id: '687342790755752945'
+lifecycle_stage: active
+run_id: 82c8e768aae14276a3cb538e9f38e773
+run_name: Gradient Boosting
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1758725301037
+status: 3
+tags: []
+user_id: giovanysamaca

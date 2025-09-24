@@ -1,0 +1,22 @@
+artifact_path: file:///Users/giovanysamaca/Desktop/fiducia_tickets_sorter/mlruns/687342790755752945/models/m-6cd38d7790df4190bb1b47e3ab59666b/artifacts
+flavors:
+  python_function:
+    env:
+      conda: conda.yaml
+      virtualenv: python_env.yaml
+    loader_module: mlflow.sklearn
+    model_path: model.pkl
+    predict_fn: predict
+    python_version: 3.11.1
+  sklearn:
+    code: null
+    pickled_model: model.pkl
+    serialization_format: cloudpickle
+    sklearn_version: 1.7.2
+mlflow_version: 3.4.0
+model_id: m-6cd38d7790df4190bb1b47e3ab59666b
+model_size_bytes: 383984
+model_uuid: m-6cd38d7790df4190bb1b47e3ab59666b
+prompts: null
+run_id: 82c8e768aae14276a3cb538e9f38e773
+utc_time_created: '2025-09-24 14:48:23.053238'

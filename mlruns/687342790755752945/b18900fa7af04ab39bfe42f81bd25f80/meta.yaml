@@ -1,0 +1,14 @@
+artifact_uri: file:///Users/giovanysamaca/Desktop/fiducia_tickets_sorter/mlruns/687342790755752945/b18900fa7af04ab39bfe42f81bd25f80/artifacts
+end_time: 1758725298034
+entry_point_name: ''
+experiment_id: '687342790755752945'
+lifecycle_stage: active
+run_id: b18900fa7af04ab39bfe42f81bd25f80
+run_name: Logistic Regression
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1758725294511
+status: 3
+tags: []
+user_id: giovanysamaca

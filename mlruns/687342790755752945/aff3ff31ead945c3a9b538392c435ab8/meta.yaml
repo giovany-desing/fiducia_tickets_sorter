@@ -1,0 +1,14 @@
+artifact_uri: file:///Users/giovanysamaca/Desktop/fiducia_tickets_sorter/mlruns/687342790755752945/aff3ff31ead945c3a9b538392c435ab8/artifacts
+end_time: 1758725314158
+entry_point_name: ''
+experiment_id: '687342790755752945'
+lifecycle_stage: active
+run_id: aff3ff31ead945c3a9b538392c435ab8
+run_name: XGBoost
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1758725311254
+status: 3
+tags: []
+user_id: giovanysamaca

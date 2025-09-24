@@ -1,0 +1,14 @@
+artifact_uri: file:///Users/giovanysamaca/Desktop/fiducia_tickets_sorter/mlruns/687342790755752945/49bd1e9037ea4ae7aa416a413c629d2a/artifacts
+end_time: 1758725311230
+entry_point_name: ''
+experiment_id: '687342790755752945'
+lifecycle_stage: active
+run_id: 49bd1e9037ea4ae7aa416a413c629d2a
+run_name: KNN
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1758725308816
+status: 3
+tags: []
+user_id: giovanysamaca

@@ -19,9 +19,8 @@ from xgboost import XGBClassifier
 
 from preprocessing import clean, limpiar_y_stem, load_config, save_dataset
 
-# ==========================================
+
 # CONFIGURACIÓN DE LOGS
-# ==========================================
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s | %(levelname)s | %(message)s",
@@ -31,12 +30,30 @@ logger = logging.getLogger(__name__)
 warnings.filterwarnings("ignore")
 
 try:
-    # ==========================================
     # CARGA Y LIMPIEZA DE DATOS
-    # ==========================================
+    
     logger.info("Cargando configuración del proyecto...")
     config = load_config()
-    project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    
+    # MLOFLOW APUNTARA A LA CARPETA RAIZ DEL PROYECTO
+
+    current_file_path = os.path.abspath(__file__)
+    project_root = os.path.dirname(os.path.dirname(os.path.dirname(current_file_path)))
+    
+    # Verificar que estamos en la carpeta correcta
+    expected_folder_name = "fiducia_tickets_sorter"
+    if os.path.basename(project_root) != expected_folder_name:
+        # Si no coincide, buscar la carpeta correcta
+        for i in range(1, 4):
+            potential_root = os.path.dirname(current_file_path)
+            for _ in range(i):
+                potential_root = os.path.dirname(potential_root)
+            if os.path.basename(potential_root) == expected_folder_name:
+                project_root = potential_root
+                break
+    
+    logger.info("Raíz del proyecto identificada: %s", project_root)
+    
     raw_path = os.path.join(project_root, config["data"]["raw_path"])
 
     logger.info("Leyendo dataset desde: %s", raw_path)
@@ -64,10 +81,8 @@ try:
     )
     logger.info("Split completado: Train=%d | Test=%d", X_train.shape[0], X_test.shape[0])
 
-    # ==========================================
-    # CONFIGURACIÓN DE MLflow
-    # ==========================================
-    # Ruta absoluta para el backend local
+  
+    # CONFIGURACIÓN DE MLflow 
     tracking_dir = os.path.join(project_root, "mlruns")
     os.makedirs(tracking_dir, exist_ok=True)
     mlflow.set_tracking_uri(f"file://{tracking_dir}")
@@ -75,12 +90,13 @@ try:
     experiment_name = config["mlflow_tracking"]["experiment_name"]
     mlflow.set_experiment(experiment_name)
 
-    logger.info("Tracking URI MLflow: %s", mlflow.get_tracking_uri())
-    logger.info("Experimento MLflow: %s", experiment_name)
+    logger.info("Tracking URI: %s", mlflow.get_tracking_uri())
+    logger.info("Directorio mlruns: %s", tracking_dir)
+    logger.info("Experimento: %s", experiment_name)
+    logger.info("=============================")
 
-    # ==========================================
     # MODELOS A EVALUAR
-    # ==========================================
+ 
     modelos = {
         "Logistic Regression": LogisticRegression(max_iter=1000),
         "Random Forest": RandomForestClassifier(n_estimators=200, random_state=42),
@@ -91,9 +107,9 @@ try:
         "XGBoost": XGBClassifier(use_label_encoder=False, eval_metric="logloss"),
     }
 
-    # ==========================================
-    # LOOP DE EXPERIMENTOS
-    # ==========================================
+   
+    # LOOP PARA EJECUTAR LOS EXPERIMENTOS
+   
     for nombre, modelo in modelos.items():
         logger.info("=== Entrenando modelo: %s ===", nombre)
 
@@ -147,7 +163,7 @@ try:
                 logger.error("Error en modelo %s: %s", nombre, str(e))
 
 except Exception as e:
-    logger.exception("Error crítico en la ejecución del script: %s", str(e))    
+    logger.exception("Error crítico en la ejecución del script: %s", str(e))   
 
 
 

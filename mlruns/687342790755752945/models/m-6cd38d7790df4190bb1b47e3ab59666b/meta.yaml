@@ -1,0 +1,10 @@
+artifact_location: file:///Users/giovanysamaca/Desktop/fiducia_tickets_sorter/mlruns/687342790755752945/models/m-6cd38d7790df4190bb1b47e3ab59666b/artifacts
+creation_timestamp: 1758725303038
+experiment_id: '687342790755752945'
+last_updated_timestamp: 1758725305551
+model_id: m-6cd38d7790df4190bb1b47e3ab59666b
+model_type: null
+name: model
+source_run_id: 82c8e768aae14276a3cb538e9f38e773
+status: 2
+status_message: null
