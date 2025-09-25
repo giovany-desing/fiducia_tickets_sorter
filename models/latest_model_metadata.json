@@ -1,0 +1,8 @@
+{
+  "model_name": "Gradient_Boosting",
+  "f1_score": 0.9752790151340877,
+  "run_id": "062a234cf517463eb7fda44e55bf5bf1",
+  "timestamp": "20250925_102843",
+  "model_path": "/Users/giovanysamaca/Desktop/fiducia_tickets_sorter/models/best_model_Gradient_Boosting_20250925_102843.pkl",
+  "model_filename": "best_model_Gradient_Boosting_20250925_102843.pkl"
+}

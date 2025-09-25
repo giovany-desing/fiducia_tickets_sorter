@@ -4,6 +4,8 @@ import logging
 import pandas as pd
 import mlflow
 import mlflow.sklearn
+import json
+from datetime import datetime
 
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.model_selection import train_test_split
@@ -19,7 +21,6 @@ from xgboost import XGBClassifier
 
 from preprocessing import clean, limpiar_y_stem, load_config, save_dataset
 
-
 # CONFIGURACIÓN DE LOGS
 logging.basicConfig(
     level=logging.INFO,
@@ -31,19 +32,17 @@ warnings.filterwarnings("ignore")
 
 try:
     # CARGA Y LIMPIEZA DE DATOS
-    
     logger.info("Cargando configuración del proyecto...")
     config = load_config()
     
-    # MLOFLOW APUNTARA A LA CARPETA RAIZ DEL PROYECTO
-
+    # ENCONTRAR CARPETA RAIZ DEL PROYECTO
     current_file_path = os.path.abspath(__file__)
-    project_root = os.path.dirname(os.path.dirname(os.path.dirname(current_file_path)))
+    project_root = os.path.dirname(os.path.dirname(current_file_path))  # Sube 2 niveles desde utils/
     
     # Verificar que estamos en la carpeta correcta
     expected_folder_name = "fiducia_tickets_sorter"
     if os.path.basename(project_root) != expected_folder_name:
-        # Si no coincide, buscar la carpeta correcta
+        # Buscar la carpeta correcta
         for i in range(1, 4):
             potential_root = os.path.dirname(current_file_path)
             for _ in range(i):
@@ -53,6 +52,14 @@ try:
                 break
     
     logger.info("Raíz del proyecto identificada: %s", project_root)
+    
+    # CREAR CARPETAS NECESARIAS
+    mlruns_dir = os.path.join(project_root, "mlruns")
+    models_dir = os.path.join(project_root, "models")
+    
+    os.makedirs(mlruns_dir, exist_ok=True)
+    os.makedirs(models_dir, exist_ok=True)
+    logger.info("Carpetas creadas: mlruns=%s, models=%s", mlruns_dir, models_dir)
     
     raw_path = os.path.join(project_root, config["data"]["raw_path"])
 
@@ -81,10 +88,8 @@ try:
     )
     logger.info("Split completado: Train=%d | Test=%d", X_train.shape[0], X_test.shape[0])
 
-  
     # CONFIGURACIÓN DE MLflow 
     tracking_dir = os.path.join(project_root, "mlruns")
-    os.makedirs(tracking_dir, exist_ok=True)
     mlflow.set_tracking_uri(f"file://{tracking_dir}")
 
     experiment_name = config["mlflow_tracking"]["experiment_name"]
@@ -96,20 +101,24 @@ try:
     logger.info("=============================")
 
     # MODELOS A EVALUAR
- 
     modelos = {
-        "Logistic Regression": LogisticRegression(max_iter=1000),
-        "Random Forest": RandomForestClassifier(n_estimators=200, random_state=42),
-        "Gradient Boosting": GradientBoostingClassifier(random_state=42),
+        "Logistic_Regression": LogisticRegression(max_iter=1000),
+        "Random_Forest": RandomForestClassifier(n_estimators=200, random_state=42),
+        "Gradient_Boosting": GradientBoostingClassifier(random_state=42),
         "SVM": SVC(kernel="rbf", probability=True),
         "KNN": KNeighborsClassifier(),
-        "Naive Bayes": GaussianNB(),
+        "Naive_Bayes": GaussianNB(),
         "XGBoost": XGBClassifier(use_label_encoder=False, eval_metric="logloss"),
     }
 
-   
+    # VARIABLES PARA GUARDAR EL MEJOR MODELO
+    mejor_modelo = None
+    mejor_nombre = None
+    mejor_f1 = 0
+    mejor_run_id = None
+    resultados_modelos = {}
+
     # LOOP PARA EJECUTAR LOS EXPERIMENTOS
-   
     for nombre, modelo in modelos.items():
         logger.info("=== Entrenando modelo: %s ===", nombre)
 
@@ -138,6 +147,15 @@ try:
                     nombre, acc, f1, prec, rec
                 )
 
+                # Guardar resultados para comparación
+                resultados_modelos[nombre] = {
+                    "accuracy": acc,
+                    "f1_score": f1,
+                    "precision": prec,
+                    "recall": rec,
+                    "run_id": run.info.run_id
+                }
+
                 # Log de métricas
                 mlflow.log_metrics({
                     "accuracy": acc,
@@ -150,20 +168,90 @@ try:
                 mlflow.log_params({f"model__{k}": v for k, v in modelo.get_params().items()
                                    if isinstance(v, (int, float, str, bool, type(None)))})
 
-                # Guardar el pipeline completo
+                # Guardar el pipeline completo en MLflow
                 mlflow.sklearn.log_model(
                     sk_model=pipe,
                     artifact_path="model",
-                    registered_model_name=f"{nombre.replace(' ', '_')}_pipeline"
+                    registered_model_name=f"{nombre}_pipeline"
                 )
+
+                # VERIFICAR SI ES EL MEJOR MODELO (basado en F1-score)
+                if f1 > mejor_f1:
+                    mejor_f1 = f1
+                    mejor_modelo = pipe
+                    mejor_nombre = nombre
+                    mejor_run_id = run.info.run_id
+                    logger.info("🏆 Nuevo mejor modelo: %s (F1: %.4f)", nombre, f1)
 
                 logger.info("✅ Modelo %s registrado en MLflow. Run ID: %s", nombre, run.info.run_id)
 
             except Exception as e:
                 logger.error("Error en modelo %s: %s", nombre, str(e))
 
+    # GUARDAR EL MEJOR MODELO EN CARPETA MODELS
+    if mejor_modelo is not None:
+        logger.info("=" * 60)
+        logger.info("🏆 GUARDANDO MEJOR MODELO")
+        logger.info("=" * 60)
+        
+        # Crear nombre de archivo con timestamp
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        modelo_filename = f"best_model_{mejor_nombre}_{timestamp}.pkl"
+        modelo_path = os.path.join(models_dir, modelo_filename)
+        
+        # Guardar el modelo usando joblib
+        import joblib
+        joblib.dump(mejor_modelo, modelo_path)
+        logger.info("✅ Mejor modelo guardado en: %s", modelo_path)
+        
+        # Guardar metadata del mejor modelo
+        metadata = {
+            "model_name": mejor_nombre,
+            "f1_score": mejor_f1,
+            "run_id": mejor_run_id,
+            "timestamp": timestamp,
+            "model_path": modelo_path,
+            "model_filename": modelo_filename
+        }
+        
+        metadata_path = os.path.join(models_dir, f"best_model_metadata_{timestamp}.json")
+        with open(metadata_path, 'w', encoding='utf-8') as f:
+            json.dump(metadata, f, indent=2, ensure_ascii=False)
+        
+        logger.info("✅ Metadata del modelo guardada en: %s", metadata_path)
+        
+        # También guardar un archivo "latest" para fácil acceso
+        latest_model_path = os.path.join(models_dir, "latest_model.pkl")
+        latest_metadata_path = os.path.join(models_dir, "latest_model_metadata.json")
+        
+        joblib.dump(mejor_modelo, latest_model_path)
+        with open(latest_metadata_path, 'w', encoding='utf-8') as f:
+            json.dump(metadata, f, indent=2, ensure_ascii=False)
+        
+        logger.info("✅ Modelo 'latest' guardado para acceso rápido")
+        
+        # Guardar resumen de todos los modelos
+        resultados_path = os.path.join(models_dir, f"model_comparison_{timestamp}.json")
+        with open(resultados_path, 'w', encoding='utf-8') as f:
+            json.dump(resultados_modelos, f, indent=2, ensure_ascii=False)
+        
+        logger.info("✅ Comparación de modelos guardada en: %s", resultados_path)
+        
+        # Mostrar resumen final
+        logger.info("=" * 60)
+        logger.info("🎯 RESUMEN FINAL - MEJOR MODELO")
+        logger.info("=" * 60)
+        logger.info("Modelo: %s", mejor_nombre)
+        logger.info("F1-Score: %.4f", mejor_f1)
+        logger.info("Run ID: %s", mejor_run_id)
+        logger.info("Archivo: %s", modelo_filename)
+        logger.info("=" * 60)
+
+    else:
+        logger.error("❌ No se pudo entrenar ningún modelo correctamente")
+
 except Exception as e:
-    logger.exception("Error crítico en la ejecución del script: %s", str(e))   
+    logger.exception("Error crítico en la ejecución del script: %s", str(e)) 
 
 
 

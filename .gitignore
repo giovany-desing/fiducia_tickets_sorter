@@ -10,4 +10,9 @@ __pycache__/
 *.pyc
 *.pyo
 
+# Ignorar experimentos de mlflow
+mlruns/
+
+
+
 

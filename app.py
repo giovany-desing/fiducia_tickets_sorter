@@ -1,20 +1,18 @@
 from flask import Flask, request, jsonify
 import os
 import sys
-import mlflow
 import pandas as pd
 import logging
 from datetime import datetime
 import traceback
-
-
-
+import json
+import joblib
+from pathlib import Path
 
 # Configurar rutas
 current_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, current_dir)
 
-# CORREGIR: El archivo se llama connect_to_postgresql.py (con QL)
 from utils.preprocessing import clean, limpiar_y_stem
 from utils.connect_to_postgresql import actualizar_causa_ticket
 
@@ -31,66 +29,93 @@ app = Flask(__name__)
 # Variable global para el modelo
 model = None
 
-# funcion para cargar el modelo desde Mlflow
+# Función para cargar el modelo (COMPATIBLE CON DOCKER Y LOCAL)
 def load_model():
     global model
     try:
-        # Configurar MLflow para cargar el modelo
-        current_file_path = os.path.abspath(__file__)
-        project_root = os.path.dirname(os.path.dirname(os.path.dirname(current_file_path)))
+        # ✅ DETECTAR AUTOMÁTICAMENTE SI ESTAMOS EN DOCKER O LOCAL
+        current_file = Path(__file__).resolve()
         
-        # Asegurar que estamos en la carpeta raiz del proyecto
-        if os.path.basename(project_root) != "fiducia_tickets_sorter":
-            # Buscar la carpeta correcta
-            base_dir = os.path.dirname(current_file_path)
-            while os.path.basename(base_dir) != "fiducia_tickets_sorter" and base_dir != "/":
-                base_dir = os.path.dirname(base_dir)
-            if os.path.basename(base_dir) == "fiducia_tickets_sorter":
-                project_root = base_dir
+        # Opción 1: Si estamos en Docker (/app/app.py)
+        if str(current_file).startswith('/app/'):
+            models_dir = Path("/app/models")
+            logger.info("🔧 Entorno detectado: DOCKER")
         
-        tracking_dir = os.path.join(project_root, "mlruns")
-        mlflow.set_tracking_uri(f"file://{tracking_dir}")
+        # Opción 2: Si estamos en local (desarrollo)
+        else:
+            # Buscar la carpeta del proyecto (donde está app.py)
+            project_root = current_file.parent
+            models_dir = project_root / "models"
+            logger.info("🔧 Entorno detectado: LOCAL")
+            logger.info(f"📁 Ruta del proyecto: {project_root}")
         
-        # Cargar el modelo XGBoost 
-        model_name = "XGBoost_pipeline"
-        model_version = "1"
-        model_uri = f"models:/{model_name}/{model_version}"
+        latest_model_path = models_dir / "latest_model.pkl"
+        latest_metadata_path = models_dir / "latest_model_metadata.json"
         
-        logger.info(f"Intentando cargar modelo: {model_uri}")
-        logger.info(f"Desde directorio: {tracking_dir}")
+        logger.info(f"🔍 Buscando modelo en: {latest_model_path}")
         
-        model = mlflow.pyfunc.load_model(model_uri)
-        logger.info(f"✅ Modelo '{model_name}' versión {model_version} cargado exitosamente.")
+        # Verificar que existen los archivos
+        if not latest_model_path.exists():
+            logger.error(f"❌ No se encuentra el archivo del modelo: {latest_model_path}")
+            
+            # Listar archivos disponibles en models/ para debugging
+            if models_dir.exists():
+                available_files = list(models_dir.iterdir())
+                logger.info("Archivos disponibles en models/:")
+                for file in available_files:
+                    logger.info(f"  - {file}")
+            else:
+                logger.error("❌ La carpeta models/ no existe")
+            
+            return False
+        
+        if not latest_metadata_path.exists():
+            logger.warning("⚠️ No se encuentra el archivo de metadata del modelo")
+        
+        # Cargar el modelo usando joblib
+        model = joblib.load(latest_model_path)
+        logger.info("✅ Modelo cargado exitosamente")
+        
+        # Cargar metadata si está disponible
+        if latest_metadata_path.exists():
+            with open(latest_metadata_path, 'r', encoding='utf-8') as f:
+                metadata = json.load(f)
+            logger.info(f"📊 Modelo: {metadata.get('model_name', 'Desconocido')}")
+            logger.info(f"🎯 F1-Score: {metadata.get('f1_score', 'Desconocido')}")
+        else:
+            logger.info("ℹ️ No hay metadata disponible para este modelo")
         
         # Verificación adicional del modelo
-        logger.info(f"Tipo del modelo cargado: {type(model)}")
-        logger.info("Modelo listo para predicciones.")
+        logger.info(f"🔍 Tipo del modelo cargado: {type(model)}")
+        
+        # Verificar que el modelo tiene los métodos necesarios
+        if hasattr(model, 'predict'):
+            logger.info("✅ El modelo tiene método 'predict'")
+        else:
+            logger.error("❌ El modelo no tiene método 'predict'")
+            return False
+            
+        if hasattr(model, 'predict_proba'):
+            logger.info("✅ El modelo tiene método 'predict_proba'")
+        else:
+            logger.warning("⚠️ El modelo no tiene método 'predict_proba'")
+        
+        # Hacer una prueba rápida de predicción con datos dummy
+        try:
+            # Crear datos de prueba (texto vacío o simple)
+            test_text = ["test prediction"]
+            prediction = model.predict(test_text)
+            logger.info(f"🧪 Prueba de predicción exitosa. Shape: {prediction.shape}")
+            logger.info("✅ Modelo listo para predicciones en producción.")
+        except Exception as test_e:
+            logger.warning(f"⚠️ La prueba de predicción falló: {test_e}")
+            logger.info("ℹ️ El modelo se cargó pero puede haber problemas con las predicciones")
         
         return True
         
     except Exception as e:
         logger.error(f"❌ Error al cargar el modelo: {e}")
-        
-        # Información de debug más detallada
-        try:
-            from mlflow.tracking import MlflowClient
-            client = MlflowClient()
-            
-            logger.info("=== DEBUG: Modelos registrados ===")
-            models = client.search_registered_models()
-            if models:
-                for rm in models:
-                    logger.info(f"Modelo: {rm.name}")
-                    versions = client.get_latest_versions(rm.name)
-                    for v in versions:
-                        logger.info(f"  - Versión {v.version} (Estado: {v.status})")
-            else:
-                logger.info("No se encontraron modelos registrados")
-            logger.info("===================================")
-            
-        except Exception as debug_e:
-            logger.error(f"Error en debug: {debug_e}")
-            
+        logger.error("🔍 Traceback completo:", exc_info=True)
         return False
 
 def preprocess_text(short_description, close_notes):
@@ -142,7 +167,7 @@ def predict():
             }), 400
         
         # Validar campos requeridos
-        required_fields = ['short_description', 'close_notes', 'ticket_id']  # ✅ Agregado ticket_id
+        required_fields = ['short_description', 'close_notes', 'ticket_id']
         missing_fields = [field for field in required_fields if field not in data]
         
         if missing_fields:
@@ -154,7 +179,7 @@ def predict():
         # Extraer datos
         short_description = data['short_description']
         close_notes = data['close_notes']
-        ticket_id = data['ticket_id']  # ✅ Nuevo campo requerido
+        ticket_id = data['ticket_id']
         
         # Preprocesar texto
         processed_text = preprocess_text(short_description, close_notes)
@@ -329,14 +354,6 @@ def predict_batch():
                     }
                 }
                 
-                # Solo incluir input detallado si está en modo debug
-                if logger.level <= logging.DEBUG:
-                    prediction_data['input'] = {
-                        'short_description': ticket['short_description'][:200] + "..." if len(ticket['short_description']) > 200 else ticket['short_description'],
-                        'close_notes': ticket['close_notes'][:200] + "..." if len(ticket['close_notes']) > 200 else ticket['close_notes'],
-                        'processed_text': processed_text.iloc[0] if hasattr(processed_text, 'iloc') else str(processed_text)[:200] + "..."
-                    }
-                
                 predictions.append(prediction_data)
                 logger.debug(f"✅ {ticket_log_prefix} Procesamiento completado")
                 
@@ -352,17 +369,13 @@ def predict_batch():
                     'error': error_msg
                 })
         
-        # Resumen final detallado
-        logger.info("=" * 60)
+        # Resumen final
         logger.info("📊 RESUMEN FINAL DEL PROCESAMIENTO BATCH")
-        logger.info("=" * 60)
         logger.info(f"📦 Total de tickets recibidos: {len(tickets)}")
         logger.info(f"✅ Tickets procesados exitosamente: {len([p for p in predictions if 'prediction' in p])}")
         logger.info(f"❌ Tickets con errores: {errores_procesamiento}")
         logger.info(f"💾 Actualizaciones BD exitosas: {actualizaciones_exitosas}")
         logger.info(f"⚠️ Actualizaciones BD fallidas: {actualizaciones_fallidas}")
-        logger.info(f"⏱️ Tiempo total: {datetime.now().isoformat()}")
-        logger.info("=" * 60)
         
         # Preparar respuesta
         response_data = {
@@ -386,7 +399,6 @@ def predict_batch():
         logger.error("💥 ERROR CRÍTICO EN PREDICCIÓN BATCH")
         logger.error(f"❌ Error: {e}")
         logger.error(f"🔍 Traceback completo: {traceback.format_exc()}")
-        logger.error(f"📦 Request data: {request.get_data()[:500]}...")  # Log parcial del request
         
         return jsonify({
             'error': 'Error interno del servidor en procesamiento batch',
@@ -414,8 +426,10 @@ def home():
 if __name__ == '__main__':
     # Cargar modelo al inicializar
     if load_model():
-        logger.info("Iniciando servidor Flask...")
-        app.run(host='0.0.0.0', port=5006, debug=False)
+        # ✅ Puerto configurable por variable de entorno
+        port = int(os.environ.get('PORT', 5002))
+        logger.info(f"🚀 Iniciando servidor Flask en puerto {port}...")
+        app.run(host='0.0.0.0', port=port, debug=False)
     else:
         logger.error("No se pudo cargar el modelo. Terminando aplicación.")
         sys.exit(1)

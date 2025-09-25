@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  ml-api:
+    build: .
+    ports:
+      - "5002:5002"
+    environment:
+      - FLASK_ENV=production
+      - PORT=5002
+    restart: unless-stopped
+    volumes:
+      - ./logs:/app/logs  # Para persistir logs
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5002/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Si necesitas PostgreSQL
+  postgres:
+    image: postgres:13
+    environment:
+      - POSTGRES_DB=fiducia_tickets
+      - POSTGRES_USER=appuser
+      - POSTGRES_PASSWORD=password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
