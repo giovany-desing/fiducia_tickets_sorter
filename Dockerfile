@@ -9,14 +9,14 @@ RUN apt-get update && apt-get install -y \
 WORKDIR /app
 
 # Copiar requirements e instalar dependencias
-COPY requirements-prod.txt .
-RUN pip install --no-cache-dir -r requirements-prod.txt
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
 # Copiar todo el proyecto
 COPY . .
 
 # Exponer puerto
-EXPOSE 5000
+EXPOSE 5002
 
 # Comando para ejecutar la aplicación
-CMD ["python", "app.py"]
+CMD ["python", "main.py"]
